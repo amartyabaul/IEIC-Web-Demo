@@ -23,6 +23,7 @@
 <meta name="twitter:description" content="Schooling Abroad • Student &amp; Guardian Visas • Visitor Visa • Immigration Consultancy.">
 <meta name="twitter:image" content="https://ieic-web-demo.vercel.app/assets/img/og-image.jpg">
 <link rel="icon" type="image/png" href="assets/img/favicon.png">
+<script>document.documentElement.classList.add("js")</script>
 <link rel="stylesheet" href="assets/css/style.css">
 </head>
 <body>
@@ -56,12 +57,13 @@
 
 <!-- ============ PRELOADER ============ -->
 <div class="preloader" id="preloader" aria-hidden="true">
+  <div class="preloader__panel preloader__panel--back"></div>
   <div class="preloader__panel"></div>
   <div class="preloader__inner">
     <div class="prelogo" id="preLogo">
-      <img class="prelogo__mark" id="preMark" src="assets/img/logo-mark-white-noplane.png" alt="" width="541" height="608">
+      <img class="prelogo__mark" id="preMark" src="assets/img/logo-full-noplane.png" alt="IEIC — International Education &amp; Immigration Consultancy" width="921" height="951">
       <span class="prelogo__ring" id="preRing"></span>
-      <img class="prelogo__plane" id="prePlane" src="assets/img/logo-plane-white.png" alt="" width="141" height="113">
+      <img class="prelogo__plane" id="prePlane" src="assets/img/logo-plane.png" alt="" width="141" height="113">
     </div>
     <div class="preloader__line"><span id="preBar"></span></div>
     <div class="preloader__meta"><span>Building Futures Beyond Borders</span><span id="preCount">0</span></div>
@@ -69,7 +71,7 @@
 </div>
 
 <div class="progress" id="progress" aria-hidden="true"></div>
-<div class="cursor" id="cursor" aria-hidden="true"><span class="cursor__label" id="cursorLabel"></span></div>
+<div class="cursor" id="cursor" aria-hidden="true"><svg class="cursor__plane" id="cursorPlane" viewBox="0 0 24 24"><use href="#i-plane"/></svg><span class="cursor__label" id="cursorLabel"></span></div>
 
 <!-- ============ NAV ============ -->
 <header class="nav" id="nav">

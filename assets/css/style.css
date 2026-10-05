@@ -99,29 +99,39 @@ svg { width: 1em; height: 1em; flex: none; }
 .link--light { color: #fff; }
 
 /* ---------- preloader ---------- */
-.preloader { position: fixed; inset: 0; z-index: 1000; display: grid; place-items: center; color: #fff; overflow: hidden; animation: pre-failsafe .6s 7s forwards; }
-.preloader__panel { position: absolute; inset: 0; background: var(--navy); }
+.preloader { position: fixed; inset: 0; z-index: 1000; display: grid; place-items: center; color: var(--ink); overflow: hidden; animation: pre-failsafe .6s 7s forwards; }
+.preloader__panel { position: absolute; inset: 0; background: #fbfaf6; }
+.preloader__panel--back { background: var(--navy); }
 .preloader__inner { position: relative; width: min(420px, 78vw); text-align: center; }
-/* the logo mark with its plane as a separate layer, so the plane can fly in and land in place */
-.prelogo { position: relative; width: clamp(104px, 11vw, 148px); aspect-ratio: 541 / 608; margin: 0 auto 40px; }
+/* the full-colour logo with its plane on a separate layer, so the plane can fly in and land in place */
+.prelogo { position: relative; width: clamp(200px, 23vw, 310px); aspect-ratio: 921 / 951; margin: 0 auto 34px; }
 .prelogo__mark { display: block; width: 100%; height: 100%; }
-.prelogo__plane { position: absolute; left: 73.937%; top: 3.783%; width: 26.063%; height: auto; will-change: transform; }
-.prelogo__ring { position: absolute; left: 86.970%; top: 13.080%; width: 46%; aspect-ratio: 1; margin: -23% 0 0 -23%; border-radius: 50%; border: 1.500px solid rgba(140, 200, 255, .9); opacity: 0; pointer-events: none; }
-.preloader__line { position: relative; height: 1px; background: rgba(255, 255, 255, .18); }
-.preloader__line span { position: absolute; inset: 0; background: #fff; transform-origin: 0 50%; transform: scaleX(0); }
-.preloader__meta { display: flex; justify-content: space-between; margin-top: 16px; font-size: 11px; font-weight: 700; letter-spacing: .16em; text-transform: uppercase; color: rgba(255, 255, 255, .7); }
-.preloader__meta span:last-child { font-variant-numeric: tabular-nums; color: #fff; }
+.prelogo__plane { position: absolute; left: 65.581%; top: 2.419%; width: 15.309%; height: auto; will-change: transform; }
+/* hidden until the script takes over, so nothing flashes at full strength before the animation starts */
+.js .prelogo__mark, .js .prelogo__plane { opacity: 0; }
+.prelogo__mark { will-change: clip-path, opacity; }
+.prelogo__ring { position: absolute; left: 73.236%; top: 8.360%; width: 30%; aspect-ratio: 1; margin: -15% 0 0 -15%; border-radius: 50%; border: 1.500px solid rgba(23, 99, 214, .8); opacity: 0; pointer-events: none; }
+.preloader__line { position: relative; height: 1px; background: rgba(11, 27, 63, .16); }
+.preloader__line span { position: absolute; inset: 0; background: var(--blue); transform-origin: 0 50%; transform: scaleX(0); }
+.preloader__meta { display: flex; justify-content: space-between; margin-top: 16px; font-size: 11px; font-weight: 700; letter-spacing: .16em; text-transform: uppercase; color: var(--ink-2); }
+.preloader__meta span:last-child { font-variant-numeric: tabular-nums; color: var(--ink); }
 @keyframes pre-failsafe { to { opacity: 0; visibility: hidden; pointer-events: none; } }
 
 /* ---------- progress + cursor ---------- */
 .progress { position: fixed; top: 0; left: 0; right: 0; height: 3px; z-index: 300; background: linear-gradient(90deg, var(--blue), var(--sky)); transform-origin: 0 50%; transform: scaleX(0); }
-.cursor { position: fixed; top: 0; left: 0; z-index: 900; width: 14px; height: 14px; margin: -7px 0 0 -7px; border-radius: 50%; background: #fff; mix-blend-mode: difference; pointer-events: none; display: none; place-items: center; transition: width .35s var(--ease), height .35s var(--ease), margin .35s var(--ease), opacity .3s; opacity: 0; }
+/* the pointer is a small plane: its nose is the hotspot and it banks toward the direction of travel */
+.cursor { position: fixed; top: 0; left: 0; z-index: 900; width: 0; height: 0; pointer-events: none; display: none; opacity: 0; transition: opacity .3s; }
 .cursor.is-on { opacity: 1; }
-.cursor.is-link { width: 46px; height: 46px; margin: -23px 0 0 -23px; }
-.cursor.is-label { width: 84px; height: 84px; margin: -42px 0 0 -42px; mix-blend-mode: normal; background: var(--blue); }
-.cursor__label { font-size: 11px; font-weight: 800; letter-spacing: .14em; text-transform: uppercase; color: #fff; opacity: 0; transition: opacity .2s; }
-.cursor.is-label .cursor__label { opacity: 1; }
-@media (hover: hover) and (pointer: fine) { .cursor { display: grid; } }
+.cursor__plane { position: absolute; left: -26.900px; top: -3.900px; width: 30px; height: 30px; color: var(--blue); stroke: #fff; stroke-width: 1.700; stroke-linejoin: round; paint-order: stroke; filter: drop-shadow(0 3px 5px rgba(8, 21, 48, .35)); overflow: visible; transform-origin: 89.600% 12.900%; transform: rotate(var(--a, 0deg)) scale(var(--s, 1)); transition: opacity .25s; will-change: transform; }
+.cursor.is-link { --s: 1.35; }
+.cursor.is-down { --s: .8; }
+.cursor__label { position: absolute; left: -42px; top: -42px; width: 84px; height: 84px; border-radius: 50%; background: var(--blue); display: grid; place-items: center; font-size: 11px; font-weight: 800; letter-spacing: .14em; text-transform: uppercase; color: #fff; opacity: 0; transform: scale(.3); transition: opacity .25s, transform .4s var(--ease); }
+.cursor.is-label .cursor__label { opacity: 1; transform: none; }
+.cursor.is-label .cursor__plane { opacity: 0; }
+@media (hover: hover) and (pointer: fine) {
+  .cursor { display: block; }
+  html.has-cursor, html.has-cursor * { cursor: none !important; }
+}
 
 /* ---------- nav ---------- */
 .nav { position: fixed; z-index: 200; top: 16px; left: 0; right: 0; margin-inline: auto; width: var(--wrap); display: flex; align-items: center; gap: 24px; padding: 8px 8px 8px 18px; border-radius: 999px; background: rgba(250, 248, 243, .72); backdrop-filter: blur(18px) saturate(1.4); -webkit-backdrop-filter: blur(18px) saturate(1.4); border: 1px solid rgba(11, 27, 63, .08); box-shadow: 0 10px 40px -18px rgba(8, 21, 48, .35); transition: transform .6s var(--ease), top .6s var(--ease); }

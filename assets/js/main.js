@@ -266,11 +266,25 @@
 
   /* --------------------------------------------------------------- cursor */
   if (finePointer && !reduced) {
-    const cur = $('#cursor'), label = $('#cursorLabel');
-    let cx = innerWidth / 2, cy = innerHeight / 2, tx = cx, ty = cy;
+    const cur = $('#cursor'), label = $('#cursorLabel'), plane = $('#cursorPlane');
+    document.documentElement.classList.add('has-cursor');
+    let cx = innerWidth / 2, cy = innerHeight / 2, tx = cx, ty = cy, ang = 0, aim = 0;
     window.addEventListener('mousemove', e => { tx = e.clientX; ty = e.clientY; cur.classList.add('is-on'); }, { passive: true });
     document.addEventListener('mouseleave', () => cur.classList.remove('is-on'));
-    const loop = () => { cx += (tx - cx) * 0.22; cy += (ty - cy) * 0.22; cur.style.transform = `translate3d(${cx}px,${cy}px,0)`; requestAnimationFrame(loop); };
+    window.addEventListener('mousedown', () => cur.classList.add('is-down'));
+    window.addEventListener('mouseup', () => cur.classList.remove('is-down'));
+    // the map is another document: our pointer cannot follow in there, so hand back to the system cursor
+    $$('iframe').forEach(f => { f.addEventListener('mouseenter', () => cur.classList.remove('is-on')); });
+    const loop = () => {
+      const dx = tx - cx, dy = ty - cy;
+      cx += dx * 0.3; cy += dy * 0.3;
+      // the artwork points up-right (-45deg); turn it to face where the pointer is heading
+      if (Math.hypot(dx, dy) > 3) aim = Math.atan2(dy, dx) * 180 / Math.PI + 45;
+      ang += (((aim - ang) % 360 + 540) % 360 - 180) * 0.14;         // shortest way round
+      cur.style.transform = `translate3d(${cx}px,${cy}px,0)`;
+      plane.style.setProperty('--a', ang.toFixed(1) + 'deg');
+      requestAnimationFrame(loop);
+    };
     loop();
     document.addEventListener('mouseover', e => {
       const lab = e.target.closest('[data-cursor]');
@@ -735,43 +749,53 @@
     // flight path: a cubic bezier in px, relative to the plane's resting place (0,0).
     // It enters from the upper left, swoops under the logo and climbs in along the logo's own trail.
     const HEADING = 33;                                  // the plane artwork points ~33deg above the horizon
-    const k = logo.offsetWidth / 130, vw = innerWidth, vh = innerHeight;
-    const P = [[-vw * .62 - 80, -vh * .2], [-vw * .08, vh * .52], [-190 * k, 123 * k], [0, 0]];
+    const k = plane.offsetWidth / 34, vw = innerWidth, vh = innerHeight;
+    const P = [[-vw * .62 - 260, -vh * .16], [-vw * .1, vh * .5], [-190 * k, 123 * k], [0, 0]];
     const bez = (t, i) => { const u = 1 - t; return u * u * u * P[0][i] + 3 * u * u * t * P[1][i] + 3 * u * t * t * P[2][i] + t * t * t * P[3][i]; };
     const tan = (t, i) => { const u = 1 - t; return 3 * u * u * (P[1][i] - P[0][i]) + 6 * u * t * (P[2][i] - P[1][i]) + 3 * t * t * (P[3][i] - P[2][i]); };
     const fly = { t: 0 }, load = { v: 0 };
+    const ss = x => { x = clamp(x, 0, 1); return x * x * (3 - 2 * x); };
+    const SHRINK = .3;                                   // until here the plane is big and the logo is still hidden
     const place = () => {
       const t = fly.t, x = bez(t, 0), y = bez(t, 1);
       const rot = Math.atan2(tan(t, 1), tan(t, 0)) * 180 / Math.PI + HEADING;
-      gsap.set(plane, { x, y, rotation: rot * (1 - Math.pow(t, 6)), scale: 1 + 1.9 * Math.pow(1 - t, 1.6), opacity: Math.min(1, t * 9) });
-      plane.style.filter = `drop-shadow(0 0 ${Math.round(16 * (1 - t))}px rgba(130,195,255,${(.9 * (1 - t)).toFixed(2)}))`;
+      const down = ss((t - SHRINK) / (1 - SHRINK));      // 0 while cruising in, 1 at touchdown
+      const sc = 1 + 7 * Math.pow(1 - down, 1.25);
+      gsap.set(plane, { x, y, rotation: rot * (1 - Math.pow(t, 6)), scale: sc, opacity: Math.min(1, t * 12) });
+      // a soft shadow while it is high; divided by the scale so it stays crisp instead of smearing when the plane is 8x
+      plane.style.filter = down < 1 ? `drop-shadow(0 ${(14 * (1 - down) / sc).toFixed(1)}px ${(10 * (1 - down) / sc).toFixed(1)}px rgba(11,27,63,${(.28 * (1 - down)).toFixed(2)}))` : '';
+      // the logo is revealed (wiped upward, the way the plane climbs) as the plane starts to shrink
+      const r = ss((t - SHRINK) / .5);
+      mark.style.opacity = r.toFixed(3);
+      mark.style.clipPath = r >= 1 ? 'none' : `inset(${((1 - r) * 100).toFixed(1)}% 0 0 0)`;
+      mark.style.transform = `translateY(${((1 - r) * 18).toFixed(1)}px)`;
     };
     place();
-    gsap.set(mark, { opacity: 0, scale: .9 });
 
-    const tl = gsap.timeline();
-    tl.to(mark, { opacity: .3, scale: 1, duration: .7, ease: 'power2.out' }, 0)
-      .to(load, {
-        v: 100, duration: 2.3, ease: 'power2.inOut',
-        onUpdate: () => {
-          count.textContent = Math.round(load.v);
-          bar.style.transform = `scaleX(${load.v / 100})`;
-          mark.style.opacity = .3 + .7 * Math.pow(load.v / 100, 2);     // the mark "charges up" as the plane approaches
-        },
+    // start only once both layers are decoded, so the first frame is already the right one
+    const decoded = img => (img.decode ? img.decode().catch(() => {}) : Promise.resolve());
+    const artReady = Promise.race([Promise.all([decoded(mark), decoded(plane)]), new Promise(r => setTimeout(r, 1500))]);
+
+    const tl = gsap.timeline({ paused: true });
+    artReady.then(() => tl.play());
+    tl.to(load, {
+        v: 100, duration: 2.5, ease: 'power2.inOut',
+        onUpdate: () => { count.textContent = Math.round(load.v); bar.style.transform = `scaleX(${load.v / 100})`; },
       }, 0)
-      .to(fly, { t: 1, duration: 2.15, ease: 'sine.out', onUpdate: place }, .15)
+      .to(fly, { t: 1, duration: 2.4, ease: 'sine.out', onUpdate: place }, .1)
       // touchdown
-      .set(plane, { x: 0, y: 0, rotation: 0, opacity: 1 }, 2.3)
-      .fromTo(plane, { scale: 1.22 }, { scale: 1, duration: .55, ease: 'back.out(3)', immediateRender: false }, 2.3)
-      .fromTo(ring, { scale: .2, opacity: .9 }, { scale: 2.4, opacity: 0, duration: .8, ease: 'power2.out', immediateRender: false }, 2.3)
-      .fromTo(logo, { scale: 1 }, { scale: 1.05, duration: .22, ease: 'power2.out', yoyo: true, repeat: 1, immediateRender: false }, 2.3)
-      .add(() => { plane.style.filter = ''; }, 2.3)
+      .set(plane, { x: 0, y: 0, rotation: 0, opacity: 1 }, 2.5)
+      .fromTo(plane, { scale: 1.22 }, { scale: 1, duration: .55, ease: 'back.out(3)', immediateRender: false }, 2.5)
+      .fromTo(ring, { scale: .2, opacity: .9 }, { scale: 2.4, opacity: 0, duration: .8, ease: 'power2.out', immediateRender: false }, 2.5)
+      .fromTo(logo, { scale: 1 }, { scale: 1.05, duration: .22, ease: 'power2.out', yoyo: true, repeat: 1, immediateRender: false }, 2.5)
+      .add(() => { plane.style.filter = ''; }, 2.5)
       .add(() => imgReady.then(() => {
         gsap.timeline({ onComplete: () => { killPreloader(); lenis?.start(); ScrollTrigger.refresh(); } })
           .to('.preloader__inner', { opacity: 0, y: -30, duration: .5, ease: 'power2.in' })
-          .to('.preloader__panel', { yPercent: -100, duration: 1.1, ease: 'power4.inOut' }, '-=.1')
-          .add(() => intro.play(), '-=.75');
-      }), 2.95);
+          .to('.preloader__panel:not(.preloader__panel--back)', { yPercent: -100, duration: .9, ease: 'power4.inOut' }, '-=.1')
+          .to('.preloader__panel--back', { yPercent: -100, duration: .95, ease: 'power4.inOut' }, '-=.62')
+          .add(() => intro.play(), '-=.7');
+      }), 3.15);
   })();
 
   /* ---- generic reveals ---- */
